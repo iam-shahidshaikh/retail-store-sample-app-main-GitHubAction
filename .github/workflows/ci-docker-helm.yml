@@ -75,6 +75,14 @@ jobs:
           echo "GITHUB_SHA=${GITHUB_SHA}" >> $GITHUB_ENV
           echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
 
+      - name: Make wrapper scripts executable
+        run: |
+          # Ensure mvnw wrappers are executable so Docker build won't fail with permission denied
+          set -euo pipefail
+          find src -maxdepth 3 -type f -name mvnw -print -exec chmod +x {} \; || true
+          # also ensure any top-level build scripts are executable
+          if [ -f mvnw ]; then chmod +x mvnw || true; fi
+
       - name: Build & push changed images
         if: steps.changed.outputs.services != ''
         run: |
