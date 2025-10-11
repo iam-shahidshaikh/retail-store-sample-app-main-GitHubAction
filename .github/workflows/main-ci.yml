@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
 
 jobs:
   detect-changes:
@@ -84,49 +85,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Build and push ${{ matrix.service }}
         run: |
           SERVICE="${{ matrix.service }}"
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
-          AWS_ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
-          ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/retail-store-${SERVICE}"
-          
+          DOCKER_REPO="${{ env.DOCKERHUB_USERNAME }}/retail-store-${SERVICE}"
+
           echo "🔨 Building ${SERVICE}:${TAG}"
-          
-          # Create ECR repo if it doesn't exist
-          aws ecr describe-repositories --repository-names "retail-store-${SERVICE}" 2>/dev/null || \
-          aws ecr create-repository --repository-name "retail-store-${SERVICE}" \
-            --image-scanning-configuration scanOnPush=true \
-            --encryption-configuration encryptionType=AES256
-          
-          # Build and push
-          docker build -t "${ECR_REPO}:${TAG}" -t "${ECR_REPO}:latest" "src/${SERVICE}/"
-          docker push "${ECR_REPO}:${TAG}"
-          docker push "${ECR_REPO}:latest"
-          
-          echo "✅ Pushed ${ECR_REPO}:${TAG}"
-          echo "ECR_REPO=${ECR_REPO}" >> $GITHUB_ENV
+
+          # Build and push to Docker Hub
+          docker build -t "${DOCKER_REPO}:${TAG}" -t "${DOCKER_REPO}:latest" "src/${SERVICE}/"
+          docker push "${DOCKER_REPO}:${TAG}"
+          docker push "${DOCKER_REPO}:latest"
+
+          echo "✅ Pushed ${DOCKER_REPO}:${TAG}"
+          echo "DOCKER_REPO=${DOCKER_REPO}" >> $GITHUB_ENV
 
       - name: Update Helm values for ${{ matrix.service }}
         run: |
           SERVICE="${{ matrix.service }}"
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
-          ECR_REPO="${{ env.ECR_REPO }}"
+          DOCKER_REPO="${DOCKER_REPO}"
           VALUES_FILE="src/${SERVICE}/chart/values.yaml"
           
           echo "📝 Updating Helm values for ${SERVICE}"
-          echo "   Repository: ${ECR_REPO}"
+          echo "   Repository: ${DOCKER_REPO}"
           echo "   Tag: ${TAG}"
           echo "   File: ${VALUES_FILE}"
           
@@ -145,7 +134,7 @@ jobs:
           
           # Update only the main service image (first occurrence under 'image:' section)
           # This preserves infrastructure component images (mysql, redis, postgresql, rabbitmq, dynamodb)
-          awk -v repo="${ECR_REPO}" -v tag="${TAG}" '
+          awk -v repo="${DOCKER_REPO}" -v tag="${TAG}" '
           BEGIN { in_main_image = 0; updated_repo = 0; updated_tag = 0 }
           /^image:/ { in_main_image = 1; print; next }
           in_main_image && /^[[:space:]]*repository:/ && !updated_repo { 
@@ -186,7 +175,7 @@ jobs:
           
           if ! git diff --quiet "src/${SERVICE}/chart/values.yaml"; then
             git add "src/${SERVICE}/chart/values.yaml"
-            git commit -m "🚀 Update ${SERVICE} Helm chart to ${TAG} - ECR: retail-store-${SERVICE} - Commit: ${{ github.sha }}"
+            git commit -m "🚀 Update ${SERVICE} Helm chart to ${TAG} - DockerHub: retail-store-${SERVICE} - Commit: ${{ github.sha }}"
             
             # Push with retry logic
             for i in {1..3}; do
