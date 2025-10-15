@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "orders.postgresql.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.postgresql.service.type }}
+  type: {{ default "ClusterIP" .Values.postgresql.service.type }}
   ports:
     - port: {{ .Values.postgresql.service.port }}
       targetPort: postgresql

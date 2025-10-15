@@ -12,7 +12,7 @@ spec:
   {{- if .Values.service.loadBalancerClass }}
   loadBalancerClass: {{ .Values.service.loadBalancerClass }}
   {{- end }}
-  type: {{ .Values.service.type }}
+  type: {{ default "ClusterIP" .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http

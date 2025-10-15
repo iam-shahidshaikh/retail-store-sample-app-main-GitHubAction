@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "checkout.redis.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.redis.service.type }}
+  type: {{ default "ClusterIP" .Values.redis.service.type }}
   ports:
     - port: {{ .Values.redis.service.port }}
       targetPort: redis

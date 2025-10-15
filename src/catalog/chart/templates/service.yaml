@@ -4,7 +4,7 @@ metadata:
   name: {{ include "catalog.fullname" . }}
   labels: {{- include "catalog.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ default "ClusterIP" .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
