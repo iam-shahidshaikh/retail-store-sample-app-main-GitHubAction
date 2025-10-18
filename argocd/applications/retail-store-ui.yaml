@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: retail-store-ui-direct
-  namespace: retail-store
+  namespace: argocd
   labels:
     app.kubernetes.io/component: service
     app.kubernetes.io/instance: retail-store-ui
@@ -20,7 +20,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: <YOUR_NODE_IP>.nip.io     # <-- Replace with node IP or domain (e.g., 13.233.x.x.nip.io)
+    - host: 65.2.140.102.nip.io
       http:
         paths:
           - path: /
