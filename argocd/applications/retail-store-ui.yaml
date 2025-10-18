@@ -1,32 +1,25 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: retail-store-ui-direct
+  name: retail-store-ui
   namespace: argocd
-  labels:
-    app.kubernetes.io/component: service
-    app.kubernetes.io/instance: retail-store-ui
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: ui
-    app.kubernetes.io/owner: retail-store-sample
-    helm.sh/chart: ui-1.2.2
   annotations:
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
-  ingressClassName: nginx
-  rules:
-    - host: 65.2.140.102.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: retail-store-ui
-                port:
-                  number: 80
+  project: retail-store
+  source:
+    repoURL: https://github.com/LondheShubham153/retail-store-sample-app
+    targetRevision: main
+    path: src/ui/chart
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: retail-store
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true 
