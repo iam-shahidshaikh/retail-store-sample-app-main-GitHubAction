@@ -1,25 +1,32 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: retail-store-ui
-  namespace: argocd
+  name: retail-store-ui-direct
+  namespace: retail-store
+  labels:
+    app.kubernetes.io/component: service
+    app.kubernetes.io/instance: retail-store-ui
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ui
+    app.kubernetes.io/owner: retail-store-sample
+    helm.sh/chart: ui-1.2.2
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
 spec:
-  project: retail-store
-  source:
-    repoURL: https://github.com/LondheShubham153/retail-store-sample-app
-    targetRevision: main
-    path: src/ui/chart
-    helm:
-      valueFiles:
-        - values.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: retail-store
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true 
+  ingressClassName: nginx
+  rules:
+    - host: <YOUR_NODE_IP>.nip.io     # <-- Replace with node IP or domain (e.g., 13.233.x.x.nip.io)
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: retail-store-ui
+                port:
+                  number: 80
